@@ -2,7 +2,26 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent
 
+# --- Vendeur (doit être avant CategorieGetSerializer / ProduitGetSerializer) ---
+class CreateSuperAdminSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
+    username = serializers.CharField(required=False, allow_blank=True)
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Cet email est déjà utilisé.")
+        return value
+
+    def create(self, validated_data):
+        return User.objects.create_superuser(
+            email=validated_data['email'],
+            password=validated_data['password'],
+            username=validated_data.get('username', ''),
+            user_type='superadmin',
+            is_staff=True,
+            is_active=True
+        )
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
 

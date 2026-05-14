@@ -9,11 +9,81 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent
 from .serializers import (
     PigeonSerializer, CoupleSerializer, ReproductionSerializer,
-    SortieSerializer, CageSerializer, CageEventSerializer, UserSerializer,
+    SortieSerializer, CageSerializer, CageEventSerializer, UserSerializer, CreateSuperAdminSerializer
 )
 from .cage_journal import log_cage_transitions
+from rest_framework.permissions import AllowAny
+from rest_framework import generics, status
+from rest_framework import generics, status
 
+import logging
 
+logger = logging.getLogger(__name__)
+
+class CreateSuperAdminView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = CreateSuperAdminSerializer 
+
+    def post(self, request, *args, **kwargs):
+        """
+        Endpoint temporaire pour créer un super admin
+        """
+
+        try:
+            # Vérifier si un super admin existe déjà
+            if User.objects.filter(user_type='superadmin').exists():
+                return Response(
+                    {'error': 'Un super admin existe déjà. Utilisez la commande de gestion ou connectez-vous.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Récupérer les données
+            email = request.data.get('email')
+            password = request.data.get('password')
+            nom = request.data.get('nom', '')
+            prenom = request.data.get('prenom', '')
+
+            # Validation
+            if not email or not password:
+                return Response(
+                    {'error': 'Email et mot de passe sont requis.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Vérifier si email existe
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {'error': 'Cet email est déjà utilisé.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Création du super admin
+            superadmin = User.objects.create_superuser(
+                email=email,
+                password=password,
+                nom=nom,
+                prenom=prenom,
+                user_type='superadmin',
+                is_staff=True,
+                is_active=True
+            )
+
+            logger.info(f"✅ Super admin créé : {email}")
+
+            return Response({
+                'message': 'Super admin créé avec succès !',
+                'email': superadmin.email,
+                'nom': superadmin.nom,
+                'prenom': superadmin.prenom,
+                'warning': '⚠️ IMPORTANT : Supprimez cet endpoint après utilisation !'
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"❌ Erreur : {str(e)}")
+            return Response(
+                {'error': f'Erreur lors de la création du super admin : {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def register(request):
@@ -63,7 +133,70 @@ class PigeonViewSet(viewsets.ModelViewSet):
             Q(parent_male=pigeon) | Q(parent_female=pigeon)
         )
         return Response(PigeonSerializer(children, many=True).data)
+class CreateSuperAdminView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = CreateSuperAdminSerializer 
 
+    def post(self, request, *args, **kwargs):
+        """
+        Endpoint temporaire pour créer un super admin
+        """
+
+        try:
+            # Vérifier si un super admin existe déjà
+            if User.objects.filter(user_type='superadmin').exists():
+                return Response(
+                    {'error': 'Un super admin existe déjà. Utilisez la commande de gestion ou connectez-vous.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Récupérer les données
+            email = request.data.get('email')
+            password = request.data.get('password')
+            nom = request.data.get('nom', '')
+            prenom = request.data.get('prenom', '')
+
+            # Validation
+            if not email or not password:
+                return Response(
+                    {'error': 'Email et mot de passe sont requis.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Vérifier si email existe
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {'error': 'Cet email est déjà utilisé.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Création du super admin
+            superadmin = User.objects.create_superuser(
+                email=email,
+                password=password,
+                nom=nom,
+                prenom=prenom,
+                user_type='superadmin',
+                is_staff=True,
+                is_active=True
+            )
+
+            logger.info(f"✅ Super admin créé : {email}")
+
+            return Response({
+                'message': 'Super admin créé avec succès !',
+                'email': superadmin.email,
+                'nom': superadmin.nom,
+                'prenom': superadmin.prenom,
+                'warning': '⚠️ IMPORTANT : Supprimez cet endpoint après utilisation !'
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"❌ Erreur : {str(e)}")
+            return Response(
+                {'error': f'Erreur lors de la création du super admin : {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class CoupleViewSet(viewsets.ModelViewSet):
     queryset = Couple.objects.all().order_by("-formed_at")

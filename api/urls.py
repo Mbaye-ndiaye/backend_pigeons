@@ -37,6 +37,8 @@ urlpatterns = [
     path("auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/me/", views.me, name="me"),
+    path('create-superadmin/', views.CreateSuperAdminView.as_view(), name='create-superadmin'),
+
     # Alias court (évite 404 si le client appelle /api/stats/)
     path("stats/", views.dashboard_stats, name="stats"),
     path("dashboard/stats/", views.dashboard_stats, name="dashboard_stats"),

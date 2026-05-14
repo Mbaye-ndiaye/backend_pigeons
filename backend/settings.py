@@ -34,7 +34,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY",)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']  # Added '192.168.1.100' to ALLOWED_HOSTS
+ALLOWED_HOSTS = ["backend-pigeons.onrender.com", "*"]  # Added '192.168.1.100' to ALLOWED_HOSTS
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']  # Added '192.168.1.100' to ALLOWED_HOSTS
 
 
 # Application definition
@@ -165,4 +166,44 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+    'DELETE',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost',
+    'http://localhost:3000',
+]
+
+CSRF_USE_SESSIONS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1",
+    "http://127.0.0.1:3000",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1",
+    "http://localhost:3000",
+]

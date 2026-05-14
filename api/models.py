@@ -1,5 +1,8 @@
 from django.db import models
-
+from safedelete.managers import SafeDeleteManager
+from safedelete.models import SafeDeleteModel
+from safedelete import DELETED_INVISIBLE
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 
 SEX_CHOICES = [
     ("M", "Mâle"), ("F", "Femelle")
@@ -15,6 +18,47 @@ SORTIE_TYPES = [
     ("deces", "Décès"),
     ("perte", "Perte"),
 ]
+ADMIN = "admin"
+SUPERADMIN = "superadmin"
+DELETED = "deleted"
+USER_TYPES = (
+    (ADMIN, ADMIN),
+    (SUPERADMIN, SUPERADMIN),
+    (DELETED, DELETED),
+)
+
+class MyModelManager(SafeDeleteManager):
+    _safedelete_visibility = DELETED_INVISIBLE
+
+
+class UserManager(BaseUserManager):
+    use_in_migrations = True
+
+    def _create_user(self, email, password, **extra_fields):
+        """
+        Creates and saves a User with the given email and password.
+        """
+        if not email:
+            raise ValueError('The given email must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_superuser', False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('user_type', SUPERADMIN)
+
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self._create_user(email, password, **extra_fields)
 
 
 class Pigeon(models.Model):

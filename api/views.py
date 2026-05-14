@@ -6,11 +6,12 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Pigeon, Couple, Reproduction, Sortie, Cage
+from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent
 from .serializers import (
     PigeonSerializer, CoupleSerializer, ReproductionSerializer,
-    SortieSerializer, CageSerializer, UserSerializer,
+    SortieSerializer, CageSerializer, CageEventSerializer, UserSerializer,
 )
+from .cage_journal import log_cage_transitions
 
 
 @api_view(["POST"])
@@ -33,13 +34,6 @@ def me(request):
     if not request.user.is_authenticated:
         return Response({"detail": "Not authenticated"}, status=401)
     return Response(UserSerializer(request.user).data)
-
-@api_view(["GET"])
-def logout(request):
-    if not request.user.is_authenticated:
-        return Response({"detail": "Not authenticated"}, status=401)
-    # Invalidate the token (optional, since JWT is stateless)
-    return Response({"detail": "Logged out"}, status=200)
 
 
 class PigeonViewSet(viewsets.ModelViewSet):
@@ -88,8 +82,13 @@ class CoupleViewSet(viewsets.ModelViewSet):
         couple.active = False
         couple.dissolved_at = date.today()
         couple.save()
-        # free cage
-        Cage.objects.filter(couple=couple).update(couple=None)
+        # free cage + journal
+        for c in Cage.objects.filter(couple=couple):
+            old_p, old_c = c.pigeon_id, c.couple_id
+            c.couple = None
+            c.save()
+            c.refresh_from_db()
+            log_cage_transitions(c, old_p, old_c)
         return Response(CoupleSerializer(couple).data)
 
 
@@ -115,12 +114,48 @@ class SortieViewSet(viewsets.ModelViewSet):
         Pigeon.objects.filter(id=sortie.pigeon_id).update(
             status=mapping.get(sortie.type, "actif")
         )
-        Cage.objects.filter(pigeon=sortie.pigeon).update(pigeon=None)
+        for c in Cage.objects.filter(pigeon=sortie.pigeon):
+            old_p, old_c = c.pigeon_id, c.couple_id
+            c.pigeon = None
+            c.save()
+            c.refresh_from_db()
+            log_cage_transitions(c, old_p, old_c)
 
 
 class CageViewSet(viewsets.ModelViewSet):
     queryset = Cage.objects.all().order_by("code")
     serializer_class = CageSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        old_p, old_c = instance.pigeon_id, instance.couple_id
+        response = super().partial_update(request, *args, **kwargs)
+        instance.refresh_from_db()
+        log_cage_transitions(instance, old_p, old_c)
+        return response
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        old_p, old_c = instance.pigeon_id, instance.couple_id
+        response = super().update(request, *args, **kwargs)
+        instance.refresh_from_db()
+        log_cage_transitions(instance, old_p, old_c)
+        return response
+
+    @action(detail=True, methods=["get", "post"], url_path="history")
+    def history(self, request, pk=None):
+        cage = self.get_object()
+        if request.method == "GET":
+            events = CageEvent.objects.filter(cage=cage)[:200]
+            return Response(CageEventSerializer(events, many=True).data)
+        allowed = {CageEvent.Kind.CAGE_CLEANED.value, CageEvent.Kind.HEALTH_CHECK.value}
+        if kind not in allowed:
+            return Response(
+                {"detail": f"kind doit être l'un de : {', '.join(sorted(allowed))}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ev = CageEvent.objects.create(cage=cage, kind=kind)
+        return Response(CageEventSerializer(ev).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def assign(self, request, pk=None):
@@ -129,24 +164,48 @@ class CageViewSet(viewsets.ModelViewSet):
         ref_id = request.data.get("ref_id")
         if kind not in ("pigeon", "couple") or not ref_id:
             return Response({"detail": "kind & ref_id required"}, status=400)
-        # free other cages holding this ref
+        try:
+            ref_id = int(ref_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "ref_id invalide"}, status=400)
+
         if kind == "pigeon":
-            Cage.objects.filter(pigeon_id=ref_id).update(pigeon=None)
+            for oc in Cage.objects.filter(pigeon_id=ref_id).exclude(pk=cage.pk):
+                op, ocl = oc.pigeon_id, oc.couple_id
+                oc.pigeon = None
+                oc.save()
+                oc.refresh_from_db()
+                log_cage_transitions(oc, op, ocl)
+            old_p, old_c = cage.pigeon_id, cage.couple_id
             cage.pigeon_id = ref_id
             cage.couple = None
+            cage.save()
+            cage.refresh_from_db()
+            log_cage_transitions(cage, old_p, old_c)
         else:
-            Cage.objects.filter(couple_id=ref_id).update(couple=None)
+            for oc in Cage.objects.filter(couple_id=ref_id).exclude(pk=cage.pk):
+                op, ocl = oc.pigeon_id, oc.couple_id
+                oc.couple = None
+                oc.save()
+                oc.refresh_from_db()
+                log_cage_transitions(oc, op, ocl)
+            old_p, old_c = cage.pigeon_id, cage.couple_id
             cage.couple_id = ref_id
             cage.pigeon = None
-        cage.save()
+            cage.save()
+            cage.refresh_from_db()
+            log_cage_transitions(cage, old_p, old_c)
         return Response(CageSerializer(cage).data)
 
     @action(detail=True, methods=["post"])
     def free(self, request, pk=None):
         cage = self.get_object()
+        old_p, old_c = cage.pigeon_id, cage.couple_id
         cage.pigeon = None
         cage.couple = None
         cage.save()
+        cage.refresh_from_db()
+        log_cage_transitions(cage, old_p, old_c)
         return Response(CageSerializer(cage).data)
 
 
@@ -160,7 +219,6 @@ def dashboard_stats(request):
         "by_race": list(pigeons.values("race").annotate(count=Count("id"))),
         "active_couples": Couple.objects.filter(active=True).count(),
         "total_reproductions": Reproduction.objects.count(),
-        "total_sorties": Sortie.objects.count(),
         "total_babies": Reproduction.objects.aggregate(total=Sum("count"))["total"] or 0,
         "cages_total": Cage.objects.count(),
         "cages_occupied": Cage.objects.filter(

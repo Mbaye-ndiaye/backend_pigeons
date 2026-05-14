@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Pigeon, Couple, Reproduction, Sortie, Cage
+from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -40,6 +40,8 @@ class ReproductionSerializer(serializers.ModelSerializer):
 
 class SortieSerializer(serializers.ModelSerializer):
     pigeon_bague = serializers.CharField(source="pigeon.bague", read_only=True)
+    buyer = serializers.CharField(allow_blank=True, required=False, default="", allow_null=True)
+    reason = serializers.CharField(allow_blank=True, required=False, default="", allow_null=True)
 
     class Meta:
         model = Sortie
@@ -48,8 +50,27 @@ class SortieSerializer(serializers.ModelSerializer):
             "buyer", "price", "reason",
         ]
 
+    def validate(self, attrs):
+        """Le modèle n’enregistre pas NULL sur buyer/reason (CharField / TextField)."""
+        if attrs.get("buyer") is None:
+            attrs["buyer"] = ""
+        if attrs.get("reason") is None:
+            attrs["reason"] = ""
+        return attrs
+
 
 class CageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cage
         fields = "__all__"
+
+
+class CageEventSerializer(serializers.ModelSerializer):
+    """Événement d’historique : libellé français via `text` (get_kind_display)."""
+
+    text = serializers.CharField(source="get_kind_display", read_only=True)
+
+    class Meta:
+        model = CageEvent
+        fields = ["id", "kind", "text", "meta", "created_at"]
+        read_only_fields = ["id", "created_at"]

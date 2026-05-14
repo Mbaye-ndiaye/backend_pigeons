@@ -18,6 +18,7 @@ import os
 import datetime
 import sys
 load_dotenv()
+import dj_database_url
 env = dotenv_values(".env")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -93,17 +94,20 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env.get("DB_NAME"),
-        'USER': env.get("DB_USER"),
-        'PASSWORD': env.get("DB_PASSWORD"),
-        'HOST': env.get("DB_HOST", "localhost"),
-        'PORT': env.get("DB_PORT", "5432"),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': env.get("DB_NAME"),
+#         'USER': env.get("DB_USER"),
+#         'PASSWORD': env.get("DB_PASSWORD"),
+#         'HOST': env.get("DB_HOST", "localhost"),
+#         'PORT': env.get("DB_PORT", "5432"),
+#     }
+# }
 
+DATABASES = {
+    'default': dj_database_url.config(default=env.get("DATABASE_URL"))
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

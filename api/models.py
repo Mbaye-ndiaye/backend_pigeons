@@ -2,8 +2,7 @@ from django.db import models
 
 
 SEX_CHOICES = [
-    ("M", "Mâle"), 
-    ("F", "Femelle")
+    ("M", "Mâle"), ("F", "Femelle")
 ]
 PIGEON_STATUS = [
     ("actif", "Actif"),
@@ -91,3 +90,26 @@ class Cage(models.Model):
 
     def __str__(self):
         return self.code
+
+
+class CageEvent(models.Model):
+    """Historique d’une cage : affectations, retraits, nettoyage, contrôle sanitaire, etc."""
+
+    class Kind(models.TextChoices):
+        PIGEON_ASSIGNED = "pigeon_assigned", "Pigeon affecté"
+        PIGEON_REMOVED = "pigeon_removed", "Pigeon retiré de la cage"
+        COUPLE_ASSIGNED = "couple_assigned", "Couple affecté"
+        COUPLE_REMOVED = "couple_removed", "Couple retiré de la cage"
+        CAGE_CLEANED = "cage_cleaned", "Cage nettoyée"
+        HEALTH_CHECK = "health_check", "Contrôle sanitaire"
+
+    cage = models.ForeignKey(Cage, on_delete=models.CASCADE, related_name="events")
+    kind = models.CharField(max_length=32, choices=Kind.choices)
+    meta = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.cage.code} — {self.get_kind_display()} @ {self.created_at}"

@@ -2,7 +2,7 @@ from django.db import models
 from safedelete.managers import SafeDeleteManager
 from safedelete.models import SafeDeleteModel
 from safedelete import DELETED_INVISIBLE
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
 SEX_CHOICES = [
     ("M", "Mâle"), ("F", "Femelle")
@@ -59,6 +59,36 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self._create_user(email, password, **extra_fields)
+
+
+class User(AbstractBaseUser, PermissionsMixin, SafeDeleteModel):
+    """
+    An abstract base class implementing a fully featured User model with
+    admin-compliant permissions.
+
+    """
+    email = models.EmailField(unique=True)
+    username = models.CharField(max_length=150, blank=True)
+    user_type = models.CharField(max_length=20, choices=USER_TYPES, default=ADMIN)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    objects = UserManager()
+
+    USERNAME_FIELD = 'email'
+    # these field are required on registering
+    REQUIRED_FIELDS = ['username']
+
+    class Meta:
+        verbose_name = ('user')
+        verbose_name_plural = ('users')
+        app_label = "api"
+
+    def __str__(self):
+        return f'<User: {self.pk},email: {self.email},  ,user_type: {self.user_type}>'
+
+    def save(self, *args, **kwargs):
+        super(User, self).save(*args, **kwargs)
+
 
 
 class Pigeon(models.Model):

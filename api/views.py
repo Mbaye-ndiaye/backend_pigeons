@@ -1,5 +1,5 @@
 from datetime import date
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 from django.db.models import Count, Sum, Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, api_view, permission_classes
@@ -15,6 +15,7 @@ from .cage_journal import log_cage_transitions
 from rest_framework.permissions import AllowAny
 from rest_framework import generics, status
 from rest_framework import generics, status
+from .models import User
 
 import logging
 
@@ -40,8 +41,7 @@ class CreateSuperAdminView(generics.GenericAPIView):
             # Récupérer les données
             email = request.data.get('email')
             password = request.data.get('password')
-            nom = request.data.get('nom', '')
-            prenom = request.data.get('prenom', '')
+            username = request.data.get('username', '')
 
             # Validation
             if not email or not password:
@@ -61,8 +61,7 @@ class CreateSuperAdminView(generics.GenericAPIView):
             superadmin = User.objects.create_superuser(
                 email=email,
                 password=password,
-                nom=nom,
-                prenom=prenom,
+                username=username,
                 user_type='superadmin',
                 is_staff=True,
                 is_active=True
@@ -73,8 +72,7 @@ class CreateSuperAdminView(generics.GenericAPIView):
             return Response({
                 'message': 'Super admin créé avec succès !',
                 'email': superadmin.email,
-                'nom': superadmin.nom,
-                'prenom': superadmin.prenom,
+                'username': superadmin.username,
                 'warning': '⚠️ IMPORTANT : Supprimez cet endpoint après utilisation !'
             }, status=status.HTTP_201_CREATED)
 
@@ -153,8 +151,7 @@ class CreateSuperAdminView(generics.GenericAPIView):
             # Récupérer les données
             email = request.data.get('email')
             password = request.data.get('password')
-            nom = request.data.get('nom', '')
-            prenom = request.data.get('prenom', '')
+            username = request.data.get('username', '')
 
             # Validation
             if not email or not password:
@@ -174,8 +171,7 @@ class CreateSuperAdminView(generics.GenericAPIView):
             superadmin = User.objects.create_superuser(
                 email=email,
                 password=password,
-                nom=nom,
-                prenom=prenom,
+                username=username,
                 user_type='superadmin',
                 is_staff=True,
                 is_active=True
@@ -186,8 +182,7 @@ class CreateSuperAdminView(generics.GenericAPIView):
             return Response({
                 'message': 'Super admin créé avec succès !',
                 'email': superadmin.email,
-                'nom': superadmin.nom,
-                'prenom': superadmin.prenom,
+                'username': superadmin.username,
                 'warning': '⚠️ IMPORTANT : Supprimez cet endpoint après utilisation !'
             }, status=status.HTTP_201_CREATED)
 

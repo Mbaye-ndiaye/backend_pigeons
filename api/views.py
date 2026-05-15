@@ -1,87 +1,18 @@
 from datetime import date
-# from django.contrib.auth.models import User
+from django.contrib.auth.models import User
 from django.db.models import Count, Sum, Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent
+from .models import Pigeon, Couple, Reproduction, Sortie, Cage
 from .serializers import (
     PigeonSerializer, CoupleSerializer, ReproductionSerializer,
-    SortieSerializer, CageSerializer, CageEventSerializer, UserSerializer, CreateSuperAdminSerializer
+    SortieSerializer, CageSerializer, UserSerializer,
 )
-from .cage_journal import log_cage_transitions
-from rest_framework.permissions import AllowAny
-from rest_framework import generics, status
-from rest_framework import generics, status
-from .models import User
 
-import logging
 
-logger = logging.getLogger(__name__)
-
-class CreateSuperAdminView(generics.GenericAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = CreateSuperAdminSerializer 
-
-    def post(self, request, *args, **kwargs):
-        """
-        Endpoint temporaire pour créer un super admin
-        """
-
-        try:
-            # Vérifier si un super admin existe déjà
-            if User.objects.filter(user_type='superadmin').exists():
-                return Response(
-                    {'error': 'Un super admin existe déjà. Utilisez la commande de gestion ou connectez-vous.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Récupérer les données
-            email = request.data.get('email')
-            password = request.data.get('password')
-            username = request.data.get('username', '')
-
-            # Validation
-            if not email or not password:
-                return Response(
-                    {'error': 'Email et mot de passe sont requis.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Vérifier si email existe
-            if User.objects.filter(email=email).exists():
-                return Response(
-                    {'error': 'Cet email est déjà utilisé.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Création du super admin
-            superadmin = User.objects.create_superuser(
-                email=email,
-                password=password,
-                username=username,
-                user_type='superadmin',
-                is_staff=True,
-                is_active=True
-            )
-
-            logger.info(f"✅ Super admin créé : {email}")
-
-            return Response({
-                'message': 'Super admin créé avec succès !',
-                'email': superadmin.email,
-                'username': superadmin.username,
-                'warning': '⚠️ IMPORTANT : Supprimez cet endpoint après utilisation !'
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            logger.error(f"❌ Erreur : {str(e)}")
-            return Response(
-                {'error': f'Erreur lors de la création du super admin : {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def register(request):
@@ -131,67 +62,7 @@ class PigeonViewSet(viewsets.ModelViewSet):
             Q(parent_male=pigeon) | Q(parent_female=pigeon)
         )
         return Response(PigeonSerializer(children, many=True).data)
-class CreateSuperAdminView(generics.GenericAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = CreateSuperAdminSerializer 
 
-    def post(self, request, *args, **kwargs):
-        """
-        Endpoint temporaire pour créer un super admin
-        """
-
-        try:
-            # Vérifier si un super admin existe déjà
-            if User.objects.filter(user_type='superadmin').exists():
-                return Response(
-                    {'error': 'Un super admin existe déjà. Utilisez la commande de gestion ou connectez-vous.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Récupérer les données
-            email = request.data.get('email')
-            password = request.data.get('password')
-            username = request.data.get('username', '')
-
-            # Validation
-            if not email or not password:
-                return Response(
-                    {'error': 'Email et mot de passe sont requis.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Vérifier si email existe
-            if User.objects.filter(email=email).exists():
-                return Response(
-                    {'error': 'Cet email est déjà utilisé.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Création du super admin
-            superadmin = User.objects.create_superuser(
-                email=email,
-                password=password,
-                username=username,
-                user_type='superadmin',
-                is_staff=True,
-                is_active=True
-            )
-
-            logger.info(f"✅ Super admin créé : {email}")
-
-            return Response({
-                'message': 'Super admin créé avec succès !',
-                'email': superadmin.email,
-                'username': superadmin.username,
-                'warning': '⚠️ IMPORTANT : Supprimez cet endpoint après utilisation !'
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            logger.error(f"❌ Erreur : {str(e)}")
-            return Response(
-                {'error': f'Erreur lors de la création du super admin : {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 class CoupleViewSet(viewsets.ModelViewSet):
     queryset = Couple.objects.all().order_by("-formed_at")
@@ -210,13 +81,8 @@ class CoupleViewSet(viewsets.ModelViewSet):
         couple.active = False
         couple.dissolved_at = date.today()
         couple.save()
-        # free cage + journal
-        for c in Cage.objects.filter(couple=couple):
-            old_p, old_c = c.pigeon_id, c.couple_id
-            c.couple = None
-            c.save()
-            c.refresh_from_db()
-            log_cage_transitions(c, old_p, old_c)
+        # free cage
+        Cage.objects.filter(couple=couple).update(couple=None)
         return Response(CoupleSerializer(couple).data)
 
 
@@ -242,48 +108,12 @@ class SortieViewSet(viewsets.ModelViewSet):
         Pigeon.objects.filter(id=sortie.pigeon_id).update(
             status=mapping.get(sortie.type, "actif")
         )
-        for c in Cage.objects.filter(pigeon=sortie.pigeon):
-            old_p, old_c = c.pigeon_id, c.couple_id
-            c.pigeon = None
-            c.save()
-            c.refresh_from_db()
-            log_cage_transitions(c, old_p, old_c)
+        Cage.objects.filter(pigeon=sortie.pigeon).update(pigeon=None)
 
 
 class CageViewSet(viewsets.ModelViewSet):
     queryset = Cage.objects.all().order_by("code")
     serializer_class = CageSerializer
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        old_p, old_c = instance.pigeon_id, instance.couple_id
-        response = super().partial_update(request, *args, **kwargs)
-        instance.refresh_from_db()
-        log_cage_transitions(instance, old_p, old_c)
-        return response
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        old_p, old_c = instance.pigeon_id, instance.couple_id
-        response = super().update(request, *args, **kwargs)
-        instance.refresh_from_db()
-        log_cage_transitions(instance, old_p, old_c)
-        return response
-
-    @action(detail=True, methods=["get", "post"], url_path="history")
-    def history(self, request, pk=None):
-        cage = self.get_object()
-        if request.method == "GET":
-            events = CageEvent.objects.filter(cage=cage)[:200]
-            return Response(CageEventSerializer(events, many=True).data)
-        allowed = {CageEvent.Kind.CAGE_CLEANED.value, CageEvent.Kind.HEALTH_CHECK.value}
-        if kind not in allowed:
-            return Response(
-                {"detail": f"kind doit être l'un de : {', '.join(sorted(allowed))}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        ev = CageEvent.objects.create(cage=cage, kind=kind)
-        return Response(CageEventSerializer(ev).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def assign(self, request, pk=None):
@@ -292,48 +122,24 @@ class CageViewSet(viewsets.ModelViewSet):
         ref_id = request.data.get("ref_id")
         if kind not in ("pigeon", "couple") or not ref_id:
             return Response({"detail": "kind & ref_id required"}, status=400)
-        try:
-            ref_id = int(ref_id)
-        except (TypeError, ValueError):
-            return Response({"detail": "ref_id invalide"}, status=400)
-
+        # free other cages holding this ref
         if kind == "pigeon":
-            for oc in Cage.objects.filter(pigeon_id=ref_id).exclude(pk=cage.pk):
-                op, ocl = oc.pigeon_id, oc.couple_id
-                oc.pigeon = None
-                oc.save()
-                oc.refresh_from_db()
-                log_cage_transitions(oc, op, ocl)
-            old_p, old_c = cage.pigeon_id, cage.couple_id
+            Cage.objects.filter(pigeon_id=ref_id).update(pigeon=None)
             cage.pigeon_id = ref_id
             cage.couple = None
-            cage.save()
-            cage.refresh_from_db()
-            log_cage_transitions(cage, old_p, old_c)
         else:
-            for oc in Cage.objects.filter(couple_id=ref_id).exclude(pk=cage.pk):
-                op, ocl = oc.pigeon_id, oc.couple_id
-                oc.couple = None
-                oc.save()
-                oc.refresh_from_db()
-                log_cage_transitions(oc, op, ocl)
-            old_p, old_c = cage.pigeon_id, cage.couple_id
+            Cage.objects.filter(couple_id=ref_id).update(couple=None)
             cage.couple_id = ref_id
             cage.pigeon = None
-            cage.save()
-            cage.refresh_from_db()
-            log_cage_transitions(cage, old_p, old_c)
+        cage.save()
         return Response(CageSerializer(cage).data)
 
     @action(detail=True, methods=["post"])
     def free(self, request, pk=None):
         cage = self.get_object()
-        old_p, old_c = cage.pigeon_id, cage.couple_id
         cage.pigeon = None
         cage.couple = None
         cage.save()
-        cage.refresh_from_db()
-        log_cage_transitions(cage, old_p, old_c)
         return Response(CageSerializer(cage).data)
 
 

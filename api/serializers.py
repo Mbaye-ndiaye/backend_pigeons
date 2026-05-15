@@ -79,6 +79,7 @@ class SortieSerializer(serializers.ModelSerializer):
 
 
 class CageSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Cage
         fields = "__all__"

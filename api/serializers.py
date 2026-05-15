@@ -40,13 +40,13 @@ class PigeonSerializer(serializers.ModelSerializer):
 
 
 class CoupleSerializer(serializers.ModelSerializer):
-    male_bague = serializers.CharField(source="male.bague", read_only=True)
-    female_bague = serializers.CharField(source="female.bague", read_only=True)
+    male = PigeonSerializer(read_only=True)
+    female = PigeonSerializer(read_only=True)
 
     class Meta:
         model = Couple
         fields = [
-            "id", "male", "female", "male_bague", "female_bague",
+            "id", "male", "female",
             "formed_at", "active", "dissolved_at",
         ]
 
@@ -79,6 +79,8 @@ class SortieSerializer(serializers.ModelSerializer):
 
 
 class CageSerializer(serializers.ModelSerializer):
+    pigeon = PigeonSerializer(read_only=True)
+    couple = CoupleSerializer(read_only=True)
     class Meta:
         model = Cage
         fields = "__all__"

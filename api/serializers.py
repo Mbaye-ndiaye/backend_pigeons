@@ -40,15 +40,39 @@ class PigeonSerializer(serializers.ModelSerializer):
 
 
 class CoupleSerializer(serializers.ModelSerializer):
-    male_bague = serializers.CharField(source="male.bague", read_only=True)
-    female_bague = serializers.CharField(source="female.bague", read_only=True)
+    male_id = serializers.IntegerField(write_only=True, required=False)
+    female_id = serializers.IntegerField(write_only=True, required=False)
+    male = PigeonSerializer(read_only=True)
+    female = PigeonSerializer(read_only=True)
 
     class Meta:
         model = Couple
         fields = [
-            "id", "male", "female", "male_bague", "female_bague",
+            "id", "male", "female", "male_id", "female_id",
             "formed_at", "active", "dissolved_at",
         ]
+
+    def create(self, validated_data):
+        male_id = validated_data.pop('male_id', None)
+        female_id = validated_data.pop('female_id', None)
+        
+        if male_id:
+            validated_data['male_id'] = male_id
+        if female_id:
+            validated_data['female_id'] = female_id
+            
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        male_id = validated_data.pop('male_id', None)
+        female_id = validated_data.pop('female_id', None)
+        
+        if male_id:
+            validated_data['male_id'] = male_id
+        if female_id:
+            validated_data['female_id'] = female_id
+            
+        return super().update(instance, validated_data)
 
 
 class ReproductionSerializer(serializers.ModelSerializer):
@@ -79,11 +103,11 @@ class SortieSerializer(serializers.ModelSerializer):
 
 
 class CageSerializer(serializers.ModelSerializer):
-    
+    pigeon = PigeonSerializer(read_only=True)
+    couple = CoupleSerializer(read_only=True)
     class Meta:
         model = Cage
         fields = "__all__"
-
 
 class CageEventSerializer(serializers.ModelSerializer):
     """Événement d’historique : libellé français via `text` (get_kind_display)."""

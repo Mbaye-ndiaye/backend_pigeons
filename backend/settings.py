@@ -1,3 +1,4 @@
+
 """
 Django settings for backend project.
 
@@ -34,8 +35,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY",)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["backend-pigeons.onrender.com", "*"]  # Added '192.168.1.100' to ALLOWED_HOSTS
-# ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']  # Added '192.168.1.100' to ALLOWED_HOSTS
+# ALLOWED_HOSTS = ["backend-pigeons.onrender.com", "*"]  # Added '192.168.1.100' to ALLOWED_HOSTS
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']  # Added '192.168.1.100' to ALLOWED_HOSTS
 
 
 # Application definition
@@ -54,15 +55,17 @@ INSTALLED_APPS = [
     'drf_yasg',
 ]
 
+# CorsMiddleware doit être placé le plus haut possible (avant CommonMiddleware), sinon les
+# requêtes OPTIONS / les en-têtes CORS peuvent être mal gérées (voir django-cors-headers).
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -95,24 +98,24 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #     }
 # }
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': env.get("DB_NAME"),
-#         'USER': env.get("DB_USER"),
-#         'PASSWORD': env.get("DB_PASSWORD"),
-#         'HOST': env.get("DB_HOST", "localhost"),
-#         'PORT': env.get("DB_PORT", "5432"),
-#     }
-# }
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env.get("DB_NAME"),
+        'USER': env.get("DB_USER"),
+        'PASSWORD': env.get("DB_PASSWORD"),
+        'HOST': env.get("DB_HOST", "localhost"),
+        'PORT': env.get("DB_PORT", "5432"),
+    }
 }
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.environ.get("DATABASE_URL"),
+#         conn_max_age=600,
+#         ssl_require=True
+#     )
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -143,6 +146,9 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+
+AUTH_USER_MODEL = 'api.User'
 
 
 # Static files (CSS, JavaScript, Images)
@@ -200,10 +206,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
     "http://127.0.0.1",
     "http://127.0.0.1:8080",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://127.0.0.1",
     "http://localhost:8080",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://backend-pigeons.onrender.com",
 ]

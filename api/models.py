@@ -109,7 +109,7 @@ class Pigeon(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.bague} ({self.race})"
+        return f"{self.nom or self.bague} ({self.race})"
 
 
 class Couple(models.Model):

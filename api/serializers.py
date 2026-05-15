@@ -103,11 +103,57 @@ class SortieSerializer(serializers.ModelSerializer):
 
 
 class CageSerializer(serializers.ModelSerializer):
+    pigeon_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    couple_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     pigeon = PigeonSerializer(read_only=True)
     couple = CoupleSerializer(read_only=True)
+    
     class Meta:
         model = Cage
-        fields = "__all__"
+        fields = ["id", "code", "pigeon", "couple", "pigeon_id", "couple_id"]
+
+    def validate(self, attrs):
+        """Validation : une cage ne peut pas avoir à la fois un pigeon et un couple."""
+        pigeon_id = attrs.get('pigeon_id')
+        couple_id = attrs.get('couple_id')
+        
+        if pigeon_id and couple_id:
+            raise serializers.ValidationError(
+                "Une cage ne peut pas contenir à la fois un pigeon et un couple."
+            )
+        
+        return attrs
+
+    def create(self, validated_data):
+        pigeon_id = validated_data.pop('pigeon_id', None)
+        couple_id = validated_data.pop('couple_id', None)
+        
+        cage = Cage.objects.create(**validated_data)
+        
+        if pigeon_id:
+            cage.pigeon_id = pigeon_id
+        if couple_id:
+            cage.couple_id = couple_id
+            
+        cage.save()
+        return cage
+
+    def update(self, instance, validated_data):
+        pigeon_id = validated_data.pop('pigeon_id', None)
+        couple_id = validated_data.pop('couple_id', None)
+        
+        # Mise à jour des champs standards
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Gestion des relations
+        if 'pigeon_id' in self.initial_data:
+            instance.pigeon_id = pigeon_id
+        if 'couple_id' in self.initial_data:
+            instance.couple_id = couple_id
+            
+        instance.save()
+        return instance
 
 class CageEventSerializer(serializers.ModelSerializer):
     """Événement d’historique : libellé français via `text` (get_kind_display)."""

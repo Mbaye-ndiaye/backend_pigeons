@@ -85,7 +85,6 @@ class CageSerializer(serializers.ModelSerializer):
         model = Cage
         fields = "__all__"
 
-
 class CageEventSerializer(serializers.ModelSerializer):
     """Événement d’historique : libellé français via `text` (get_kind_display)."""
 

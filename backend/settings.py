@@ -98,24 +98,24 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #     }
 # }
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': env.get("DB_NAME"),
-#         'USER': env.get("DB_USER"),
-#         'PASSWORD': env.get("DB_PASSWORD"),
-#         'HOST': env.get("DB_HOST", "localhost"),
-#         'PORT': env.get("DB_PORT", "5432"),
-#     }
-# }
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env.get("DB_NAME"),
+        'USER': env.get("DB_USER"),
+        'PASSWORD': env.get("DB_PASSWORD"),
+        'HOST': env.get("DB_HOST", "localhost"),
+        'PORT': env.get("DB_PORT", "5432"),
+    }
 }
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.environ.get("DATABASE_URL"),
+#         conn_max_age=600,
+#         ssl_require=True
+#     )
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

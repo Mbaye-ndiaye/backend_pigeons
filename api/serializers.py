@@ -1,6 +1,10 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Pigeon, Couple, Reproduction, Sortie, Cage, CageEvent, User
+
+# --- Serializer JWT personnalisé pour utiliser email au lieu de username ---
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = User.USERNAME_FIELD  # Utilise 'email' défini dans le modèle User
 
 # --- Vendeur (doit être avant CategorieGetSerializer / ProduitGetSerializer) ---
 class CreateSuperAdminSerializer(serializers.Serializer):
@@ -23,14 +27,26 @@ class CreateSuperAdminSerializer(serializers.Serializer):
             is_active=True
         )
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
+    username = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
         fields = ["id", "username", "email", "password"]
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        # Extraire les données
+        email = validated_data.get('email')
+        password = validated_data.get('password')
+        username = validated_data.get('username', '')
+        
+        # Créer l'utilisateur avec le UserManager personnalisé
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            username=username
+        )
+        return user
 
 
 class PigeonSerializer(serializers.ModelSerializer):

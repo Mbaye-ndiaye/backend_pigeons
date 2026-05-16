@@ -1,16 +1,20 @@
 from datetime import date
-from django.contrib.auth.models import User
-from django.db.models import Count, Sum, Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.db.models import Count, Sum, Q
 
-from .models import Pigeon, Couple, Reproduction, Sortie, Cage
+from .models import Pigeon, Couple, Reproduction, Sortie, Cage, User
 from .serializers import (
     PigeonSerializer, CoupleSerializer, ReproductionSerializer,
-    SortieSerializer, CageSerializer, UserSerializer,
+    SortieSerializer, CageSerializer, UserSerializer, CustomTokenObtainPairSerializer,
 )
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 @api_view(["POST"])

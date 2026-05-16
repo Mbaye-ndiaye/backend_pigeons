@@ -35,8 +35,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY",)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = ["backend-pigeons.onrender.com", "*"]  # Added '192.168.1.100' to ALLOWED_HOSTS
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']  # Added '192.168.1.100' to ALLOWED_HOSTS
+ALLOWED_HOSTS = ["backend-pigeons.onrender.com", "*"]  # Added '192.168.1.100' to ALLOWED_HOSTS
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']  # Added '192.168.1.100' to ALLOWED_HOSTS
 
 
 # Application definition
@@ -98,24 +98,24 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env.get("DB_NAME"),
-        'USER': env.get("DB_USER"),
-        'PASSWORD': env.get("DB_PASSWORD"),
-        'HOST': env.get("DB_HOST", "localhost"),
-        'PORT': env.get("DB_PORT", "5432"),
-    }
-}
-
 # DATABASES = {
-#     'default': dj_database_url.config(
-#         default=os.environ.get("DATABASE_URL"),
-#         conn_max_age=600,
-#         ssl_require=True
-#     )
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': env.get("DB_NAME"),
+#         'USER': env.get("DB_USER"),
+#         'PASSWORD': env.get("DB_PASSWORD"),
+#         'HOST': env.get("DB_HOST", "localhost"),
+#         'PORT': env.get("DB_PORT", "5432"),
+#     }
 # }
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True
+    )
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
+from .views import CustomTokenObtainPairView
 from django.urls import re_path
 from django.views.static import serve
 from rest_framework import permissions
@@ -34,7 +35,7 @@ router.register(r"cages", views.CageViewSet)
 urlpatterns = [
     path("", include(router.urls)),
     path("auth/register/", views.register, name="register"),
-    path("auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("auth/login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/me/", views.me, name="me"),
    #  path('create-superadmin/', views.CreateSuperAdminView.as_view(), name='create-superadmin'),

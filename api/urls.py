@@ -26,11 +26,11 @@ schema_view = get_schema_view(
    permission_classes=(permissions.AllowAny,),
 )
 router = DefaultRouter()
-router.register(r"pigeons", views.PigeonViewSet)
-router.register(r"couples", views.CoupleViewSet)
-router.register(r"reproductions", views.ReproductionViewSet)
-router.register(r"sorties", views.SortieViewSet)
-router.register(r"cages", views.CageViewSet)
+router.register(r"pigeons", views.PigeonViewSet, basename="pigeon")
+router.register(r"couples", views.CoupleViewSet, basename="couple")
+router.register(r"reproductions", views.ReproductionViewSet, basename="reproduction")
+router.register(r"sorties", views.SortieViewSet, basename="sortie")
+router.register(r"cages", views.CageViewSet, basename="cage")
 
 urlpatterns = [
     path("", include(router.urls)),

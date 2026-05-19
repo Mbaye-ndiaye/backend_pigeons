@@ -35,9 +35,6 @@ class UserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, email, password, **extra_fields):
-        """
-        Creates and saves a User with the given email and password.
-        """
         if not email:
             raise ValueError('The given email must be set')
         email = self.normalize_email(email)
@@ -62,11 +59,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin, SafeDeleteModel):
-    """
-    An abstract base class implementing a fully featured User model with
-    admin-compliant permissions.
-
-    """
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, blank=True)
     user_type = models.CharField(max_length=20, choices=USER_TYPES, default=ADMIN)
@@ -75,7 +67,6 @@ class User(AbstractBaseUser, PermissionsMixin, SafeDeleteModel):
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    # these field are required on registering
     REQUIRED_FIELDS = ['username']
 
     class Meta:
@@ -84,15 +75,17 @@ class User(AbstractBaseUser, PermissionsMixin, SafeDeleteModel):
         app_label = "api"
 
     def __str__(self):
-        return f'<User: {self.pk},email: {self.email},  ,user_type: {self.user_type}>'
+        return f'<User: {self.pk}, email: {self.email}, user_type: {self.user_type}>'
 
     def save(self, *args, **kwargs):
         super(User, self).save(*args, **kwargs)
 
 
-
 class Pigeon(models.Model):
-    bague = models.CharField(max_length=50, unique=True)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="pigeons", null=True, blank=True
+    )
+    bague = models.CharField(max_length=50)
     sex = models.CharField(max_length=1, choices=SEX_CHOICES)
     race = models.CharField(max_length=100)
     birth_date = models.DateField(null=True, blank=True)
@@ -106,13 +99,20 @@ class Pigeon(models.Model):
     )
     status = models.CharField(max_length=10, choices=PIGEON_STATUS, default="actif")
     notes = models.TextField(blank=True, default="")
+    image = models.ImageField(upload_to="pigeons/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = [["user", "bague"]]
+
     def __str__(self):
-        return f"{self.nom or self.bague} ({self.race})"
+        return f"{self.bague} ({self.race})"
 
 
 class Couple(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="couples", null=True, blank=True
+    )
     male = models.ForeignKey(
         Pigeon, related_name="couples_as_male",
         on_delete=models.CASCADE, limit_choices_to={"sex": "M"},
@@ -124,12 +124,16 @@ class Couple(models.Model):
     formed_at = models.DateField()
     active = models.BooleanField(default=True)
     dissolved_at = models.DateField(null=True, blank=True)
+    image = models.ImageField(upload_to="couples/", null=True, blank=True)
 
     def __str__(self):
         return f"Couple {self.male.bague} x {self.female.bague}"
 
 
 class Reproduction(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="reproductions", null=True, blank=True
+    )
     couple = models.ForeignKey(Couple, related_name="reproductions", on_delete=models.CASCADE)
     pond_date = models.DateField()
     hatch_date = models.DateField(null=True, blank=True)
@@ -142,6 +146,9 @@ class Reproduction(models.Model):
 
 
 class Sortie(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="sorties", null=True, blank=True
+    )
     pigeon = models.ForeignKey(Pigeon, related_name="sorties", on_delete=models.CASCADE)
     type = models.CharField(max_length=10, choices=SORTIE_TYPES)
     date = models.DateField()
@@ -154,7 +161,10 @@ class Sortie(models.Model):
 
 
 class Cage(models.Model):
-    code = models.CharField(max_length=20, unique=True)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="cages", null=True, blank=True
+    )
+    code = models.CharField(max_length=20)
     pigeon = models.OneToOneField(
         Pigeon, null=True, blank=True, related_name="cage", on_delete=models.SET_NULL,
     )
@@ -162,12 +172,15 @@ class Cage(models.Model):
         Couple, null=True, blank=True, related_name="cage", on_delete=models.SET_NULL,
     )
 
+    class Meta:
+        unique_together = [["user", "code"]]
+
     def __str__(self):
         return self.code
 
 
 class CageEvent(models.Model):
-    """Historique d’une cage : affectations, retraits, nettoyage, contrôle sanitaire, etc."""
+    """Historique d'une cage : affectations, retraits, nettoyage, contrôle sanitaire, etc."""
 
     class Kind(models.TextChoices):
         PIGEON_ASSIGNED = "pigeon_assigned", "Pigeon affecté"

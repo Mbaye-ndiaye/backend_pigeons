@@ -2,6 +2,7 @@ from datetime import date
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db.models import Count, Sum, Q
@@ -40,11 +41,11 @@ def me(request):
 
 
 class PigeonViewSet(viewsets.ModelViewSet):
-    queryset = Pigeon.objects.all().order_by("-created_at")
     serializer_class = PigeonSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Pigeon.objects.filter(user=self.request.user).order_by("-created_at")
         sex = self.request.query_params.get("sex")
         st = self.request.query_params.get("status")
         race = self.request.query_params.get("race")
@@ -59,6 +60,9 @@ class PigeonViewSet(viewsets.ModelViewSet):
             qs = qs.filter(Q(bague__icontains=search) | Q(race__icontains=search))
         return qs
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
     @action(detail=True, methods=["get"])
     def descendants(self, request, pk=None):
         pigeon = self.get_object()
@@ -69,15 +73,18 @@ class PigeonViewSet(viewsets.ModelViewSet):
 
 
 class CoupleViewSet(viewsets.ModelViewSet):
-    queryset = Couple.objects.all().order_by("-formed_at")
     serializer_class = CoupleSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Couple.objects.filter(user=self.request.user).order_by("-formed_at")
         active = self.request.query_params.get("active")
         if active is not None:
             qs = qs.filter(active=active.lower() in ("1", "true", "yes"))
         return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=True, methods=["post"])
     def dissolve(self, request, pk=None):
@@ -91,23 +98,27 @@ class CoupleViewSet(viewsets.ModelViewSet):
 
 
 class ReproductionViewSet(viewsets.ModelViewSet):
-    queryset = Reproduction.objects.all().order_by("-pond_date")
     serializer_class = ReproductionSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Reproduction.objects.filter(user=self.request.user).order_by("-pond_date")
         couple = self.request.query_params.get("couple")
         if couple:
             qs = qs.filter(couple_id=couple)
         return qs
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 class SortieViewSet(viewsets.ModelViewSet):
-    queryset = Sortie.objects.all().order_by("-date")
     serializer_class = SortieSerializer
 
+    def get_queryset(self):
+        return Sortie.objects.filter(user=self.request.user).order_by("-date")
+
     def perform_create(self, serializer):
-        sortie = serializer.save()
+        sortie = serializer.save(user=self.request.user)
         mapping = {"vente": "vendu", "deces": "mort", "perte": "perdu"}
         Pigeon.objects.filter(id=sortie.pigeon_id).update(
             status=mapping.get(sortie.type, "actif")
@@ -116,8 +127,13 @@ class SortieViewSet(viewsets.ModelViewSet):
 
 
 class CageViewSet(viewsets.ModelViewSet):
-    queryset = Cage.objects.all().order_by("code")
     serializer_class = CageSerializer
+
+    def get_queryset(self):
+        return Cage.objects.filter(user=self.request.user).order_by("code")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=True, methods=["post"])
     def assign(self, request, pk=None):
@@ -149,20 +165,21 @@ class CageViewSet(viewsets.ModelViewSet):
 
 @api_view(["GET"])
 def dashboard_stats(request):
-    pigeons = Pigeon.objects.all()
+    user = request.user
+    pigeons = Pigeon.objects.filter(user=user)
     return Response({
         "total_pigeons": pigeons.count(),
         "by_status": list(pigeons.values("status").annotate(count=Count("id"))),
         "by_sex": list(pigeons.values("sex").annotate(count=Count("id"))),
         "by_race": list(pigeons.values("race").annotate(count=Count("id"))),
-        "active_couples": Couple.objects.filter(active=True).count(),
-        "total_reproductions": Reproduction.objects.count(),
-        "total_babies": Reproduction.objects.aggregate(total=Sum("count"))["total"] or 0,
-        "cages_total": Cage.objects.count(),
-        "cages_occupied": Cage.objects.filter(
+        "active_couples": Couple.objects.filter(user=user, active=True).count(),
+        "total_reproductions": Reproduction.objects.filter(user=user).count(),
+        "total_babies": Reproduction.objects.filter(user=user).aggregate(total=Sum("count"))["total"] or 0,
+        "cages_total": Cage.objects.filter(user=user).count(),
+        "cages_occupied": Cage.objects.filter(user=user).filter(
             Q(pigeon__isnull=False) | Q(couple__isnull=False)
         ).count(),
         "sales_total": float(
-            Sortie.objects.filter(type="vente").aggregate(s=Sum("price"))["s"] or 0
+            Sortie.objects.filter(user=user, type="vente").aggregate(s=Sum("price"))["s"] or 0
         ),
     })
